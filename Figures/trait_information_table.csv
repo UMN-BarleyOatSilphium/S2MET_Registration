@@ -1,0 +1,15 @@
+Trait,Unit,Environments,Observations
+Grain Yield,kg ha -1,40,9390
+Plant Height,centimeter,38,9263
+Heading Date,days,36,8713
+Test Weight,g liter -1,22,4852
+Grain Protein,kg ha -1,14,3210
+Plump Grain,percent,14,2825
+50 Seed Weight,grams,9,1766
+Free Amino Nitrogen,parts per million,4,1055
+Alpha Amylase,20°DU,4,1054
+Beta Glucan,percent,4,1054
+Diastatic Power,°ASBC,4,1054
+Soluble Protein/ Total Protein,percent,4,1054
+Malt Extract,percent,4,851
+Wort Protein,percent,4,851

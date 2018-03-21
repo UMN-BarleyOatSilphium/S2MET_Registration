@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1521384972211.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "BBE4B0F7",
+    "lastKnownWriteTime" : 1521568928,
+    "last_content_update" : 1521568928281,
+    "path" : "C:/Users/Jeff/Google Drive/Barley Lab/Projects/S2MET_Registration/Scripts/bcap_s2tp_comparisons.R",
+    "project_path" : "Scripts/bcap_s2tp_comparisons.R",
+    "properties" : {
+        "cursorPosition" : "68,0",
+        "scrollLine" : "55",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 4,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

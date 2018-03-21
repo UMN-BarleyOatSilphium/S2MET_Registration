@@ -1,0 +1,11 @@
+"0","```r
+sb_phenos_BLUE <- data.frame(
+  line_name = str_replace(names(BLUEs), \"line_name\", \"\"), 
+  trait = unique(tr$trait),
+  value = BLUEs,
+  row.names = NULL
+)
+
+```"
+"1","Error in unique(tr$trait) : object 'tr' not found
+"

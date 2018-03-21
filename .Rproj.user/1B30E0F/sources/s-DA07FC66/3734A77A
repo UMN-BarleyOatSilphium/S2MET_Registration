@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1521133891944.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "3734A77A",
+    "lastKnownWriteTime" : 1521659842,
+    "last_content_update" : 1521659842162,
+    "path" : "C:/Users/Jeff/Google Drive/Barley Lab/Projects/S2MET_Registration/Scripts/phenotype_data_adjustment_summary.R",
+    "project_path" : "Scripts/phenotype_data_adjustment_summary.R",
+    "properties" : {
+        "cursorPosition" : "383,0",
+        "scrollLine" : "363",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
