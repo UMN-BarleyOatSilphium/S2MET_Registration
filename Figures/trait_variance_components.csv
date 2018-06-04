@@ -1,6 +1,15 @@
-Term,50 Seed Weight,Alpha Amylase,Beta Glucan,Diastatic Power,Free Amino Nitrogen,Grain Protein,Grain Yield,Heading Date,Malt Extract,Plant Height,Plump Grain,Soluble Protein/ Total Protein,Test Weight,Wort Protein
-Genotype,0.026 ***,59.582 ***,8362.772 ***,275.961 ***,523.845 ***,0.309 ***,70782.837 ***,10.711 ***,0.439 ***,9.313 ***,16.418 ***,6.268 ***,164.996 ***,0.1 ***
-Genotype %*% Location,0,97.819,5241.102,156.762,390.791,0,0,0,0.014,0,0,3.858,0,0.095
-Genotype %*% Year,0.004 ***,17.733,423.606,98.215 ***,84.133,0,0,0,0,0,0,12.295 ***,0,0
-Genotype %*% Year %*% Location,0.012 ***,56.894,4587.619,95.881,344.492,0.669 ***,679059.018 ***,25.46 ***,1.237,59.232 ***,26.98 ***,3.949,823.316 ***,0.012
-Residual,0,0.064,412.37,1.554,3.412,0,396975.251,0,0,0.004,0.377,0.001,0.217,0
+Trait,Environment,Genotype,Genotype %*% Environment,Residual
+Grain Yield,4431721.101 ***,85227.91 ***,359571.906 ***,140467.126
+Plant Height,178.236 ***,10.46 ***,21.759 ***,0.00212
+Heading Date,40.829 ***,11.191 ***,7.51 ***,0.0000931
+Test Weight,3043.846 ***,199.348 ***,412.758 ***,0.237
+Grain Protein,3.364 ***,0.312 ***,0.623 ***,3.28e-06
+Plump Grain,30.717 ***,16.208 ***,26.454 ***,0.000112
+50 Seed Weight,0.0416 ***,0.0253 ***,0.0135 ***,5.87e-10
+Free Amino Nitrogen,642.633 ***,550.647 ***,781.384 ***,1.603
+Alpha Amylase,228.595 ***,68.752 ***,163.327 ***,0.0603
+Beta Glucan,7100.539 ***,8562.131 ***,10040.205 ***,461.325
+Diastatic Power,371.275 ***,321.408 ***,301.353 ***,0.443
+Soluble Protein/ Total Protein,13.805 ***,5.992 ***,15.024 ***,0.000211
+Malt Extract,1.306 ***,0.439 ***,1.251 ***,0.0000124
+Wort Protein,0.228 ***,0.1 ***,0.107 ***,8.95e-08

@@ -2,12 +2,33 @@
 ## 
 ## Phenotypic data adjustment and analysis
 ## Author: Jeff Neyhart
-## Last updated: March 15, 2018
+## Last updated: May 29, 2018
 ## 
 
 # Run the source script
 repo_dir <- getwd()
 source(file.path(repo_dir, "source.R"))
+
+## Load the optimx package
+library(optimx)
+
+
+## Concatenate the pedigree information
+# Load the pedigree data
+ped_file <- "C:/Users/Jeff/GoogleDrive/BarleyLab/Breeding/PopulationInformation/Pedigree/UMN_S2_Pedigrees.xlsx"
+tp_ped <- read_excel(path = ped_file, sheet = "TP")
+vp_ped <- read_excel(path = ped_file, sheet = "S2C1R")
+
+# Combine
+s2met_pedigree <- bind_rows(
+  select(tp_ped, Line, Pedigree),
+  select(vp_ped, Line, Pedigree)
+)
+
+# Print to csv
+write_csv(x = s2met_pedigree, path = "S2MET_pedigree.csv")
+
+
 
 ### Adjust Phenotypic Values ###
 
@@ -32,11 +53,19 @@ stage_one <- data_to_model %>%
     # Create a separate df object - this greatly improves the speed of the model fitting
     df <- droplevels(.)
     
+    # ## Edit the contrasts
+    # contrasts(df$line) <- contr.sum(levels(df$line)) %>% `colnames<-`(., head(levels(df$line), -1))
+    # contrasts(df$check) <- contr.sum(levels(df$check)) %>% `colnames<-`(., head(levels(df$check), -1))
+    # 
+    
     # Extract the function and the formula, then fit
     if (is.na(df$blk[1])) {
       f <- forms$form1
       
       fit <- lm(formula = f, data = df)
+      
+      ## Test
+      # fit1 <- lm(value ~ line + check, df)
       
       # Tidy
       fit_tidy <- tidy(fit) %>% 
@@ -82,6 +111,13 @@ S2_MET_BLUEs_use <- stage_one %>%
   select(trial, location, year, environment, trait, line_name, value = estimate, std.error)
 
 
+## Remove potential outlier environment-trait combinations
+S2_MET_BLUEs_use <- S2_MET_BLUEs_use %>% 
+  filter(!(trait == "GrainYield" & environment == "HNY16"))
+
+
+
+
 
 ## Variance component table
 
@@ -89,8 +125,8 @@ S2_MET_BLUEs_use <- stage_one %>%
 # to determine variance components.
 # Use a likelihood ratio test to assess the significance of each of the variance
 # comonents
-ranef_terms <- c("(1|line_name)", "(1|line_name:year)", "(1|line_name:location)", "(1|line_name:year:location)")
-fixef_terms <- c("year", "location")
+ranef_terms <- c("(1|line_name)", "(1|environment)", "(1|line_name:environment)")
+fixef_terms <- c()
 
 ## Fit each model to each trait
 # We will need to drop models that are not relevant to certain traits (i.e. if 
@@ -98,7 +134,10 @@ fixef_terms <- c("year", "location")
 
 
 # Control for lmer
-control <- lmerControl(check.nobs.vs.nlev = "ignore", check.nobs.vs.nRE = "ignore")
+control <- lmerControl(check.nobs.vs.nlev = "ignore", check.nobs.vs.nRE = "ignore", 
+                       calc.derivs = FALSE, optimizer = "optimx",
+                       optCtrl = list(method = "nlminb", starttests = FALSE, kkt = FALSE))
+
 
 
 # Iterate over traits
@@ -114,52 +153,68 @@ trait_varcomp <- S2_MET_BLUEs_use %>%
     print(unique(df$trait))
     
     # Determine the number of locations and years
-    n_loc <- n_distinct(df$location)
-    n_year <- n_distinct(df$year)
+    # n_loc <- n_distinct(df$location)
+    # n_year <- n_distinct(df$year)
     n_env <- n_distinct(df$environment)
     
     # Determine the harmonic mean of the number of locations, years, and reps
-    plot_table <- xtabs(~ line_name + location + year, df)
+    plot_table <- xtabs(~ line_name + environment, df)
     
     ## Harmonic means
     # Locations
-    harm_loc <- apply(X = plot_table, MARGIN = c(1,2), sum) %>% 
-      ifelse(. > 1, 1, .) %>%
-      rowSums() %>% 
-      harm_mean()
-    
-    # Year
-    harm_year <- apply(X = plot_table, MARGIN = c(1,3), sum) %>% 
+    # harm_loc <- apply(X = plot_table, MARGIN = c(1,2), sum) %>% 
+    #   ifelse(. > 1, 1, .) %>%
+    #   rowSums() %>% 
+    #   harm_mean()
+    # 
+    # # Year
+    # harm_year <- apply(X = plot_table, MARGIN = c(1,3), sum) %>% 
+    #   ifelse(. > 1, 1, .) %>%
+    #   rowSums() %>% 
+    #   harm_mean()
+    # 
+    harm_env <- apply(X = plot_table, MARGIN = c(1,2), sum) %>% 
       ifelse(. > 1, 1, .) %>%
       rowSums() %>% 
       harm_mean()
     
     # Reps
-    harm_rep <- apply(X = plot_table, MARGIN = c(1,2,3), sum) %>% 
+    harm_rep <- apply(X = plot_table, MARGIN = c(1,2), sum) %>% 
       harm_mean()
     
     
     # Remove terms based on the number of locations or years
-    if (all(n_loc == 1, n_year == 1)) {
-      # Remove any terms with location and year
-      remove_fixef_terms <- fixef_terms[str_detect(fixef_terms, "location|year")]
-      removed_ranef_terms <- ranef_terms[str_detect(ranef_terms, "location|year")]
-      
-    } else if (n_loc == 1) {
-      # Remove any term with location
-      remove_fixef_terms <- fixef_terms[str_detect(fixef_terms, "location")]
-      removed_ranef_terms <- ranef_terms[str_detect(ranef_terms, "location")]
-      
-    } else if (n_year == 1) {
-      # Remove any term with year
-      remove_fixef_terms <- fixef_terms[str_detect(fixef_terms, "year")]
-      removed_ranef_terms <- ranef_terms[str_detect(ranef_terms, "year")]
+    # if (all(n_loc == 1, n_year == 1)) {
+    #   # Remove any terms with location and year
+    #   remove_fixef_terms <- fixef_terms[str_detect(fixef_terms, "location|year")]
+    #   removed_ranef_terms <- ranef_terms[str_detect(ranef_terms, "location|year")]
+    #   
+    # } else if (n_loc == 1) {
+    #   # Remove any term with location
+    #   remove_fixef_terms <- fixef_terms[str_detect(fixef_terms, "location")]
+    #   removed_ranef_terms <- ranef_terms[str_detect(ranef_terms, "location")]
+    #   
+    # } else if (n_year == 1) {
+    #   # Remove any term with year
+    #   remove_fixef_terms <- fixef_terms[str_detect(fixef_terms, "year")]
+    #   removed_ranef_terms <- ranef_terms[str_detect(ranef_terms, "year")]
+    #   
+    # } else {
+    #   # Remove no terms
+    #   remove_fixef_terms <- removed_ranef_terms <- character()
+    #   
+    # }
+    
+    if (n_env == 1) {
+      # Remove environment
+      removed_ranef_terms <- ranef_terms[str_detect(ranef_terms, "environment")]
       
     } else {
       # Remove no terms
       remove_fixef_terms <- removed_ranef_terms <- character()
       
     }
+    
     
     # Remove any terms
     ranef_terms_use <- setdiff(ranef_terms, removed_ranef_terms)
@@ -213,24 +268,121 @@ trait_varcomp <- S2_MET_BLUEs_use %>%
     var_comp1 <- left_join(x = var_comp, y = fits_lrt_df, by = "grp") %>%
       dplyr::select(term = grp, variance = vcov, pvalue)
     
-    # Calculate heritability
-    h2 <- herit(object = fits$full, n_l = harm_loc, n_y = harm_year, n_r = harm_rep,
-                exp = "line_name / (line_name + (line_name:year / n_y) + (line_name:location / n_l) + 
-                (line_name:year:location / (n_l * n_y)) + (Residual / (n_l * n_y * n_r)))")
+    # # Calculate heritability
+    # h2 <- herit(object = fits$full, n_l = harm_loc, n_y = harm_year, n_r = harm_rep,
+    #             exp = "line_name / (line_name + (line_name:year / n_y) + (line_name:location / n_l) + 
+    #             (line_name:year:location / (n_l * n_y)) + (Residual / (n_l * n_y * n_r)))")
+    
+    h2 <- herit(object = fits$full, n_e = harm_env, n_r = harm_rep,
+                exp = "line_name / (line_name + (line_name:environment / n_e) + (Residual / (n_e * n_r)))")
     
     # Return the heritability
-    var_comp2 <- var_comp1 %>% mutate(h2 = h2)
+    var_comp2 <- var_comp1 %>% mutate(h2 = h2$heritability)
     
     # Return the variance components and the full model fit
     data_frame(var_comp = list(var_comp2), full_fit = fits[1])
     
   })
 
-# Save this data
-save_file <- file.path(proj_dir, "Results/all_trait_variance_component_heritability.RData")
-save("trait_varcomp", "S2_MET_BLUEs_use", file = save_file)
 
 
+
+
+# ## Try the mohring and piepho 2009 method of heritability
+# ## The estimates using this approach are not very different from the ad hoc heritability
+# ## method outlined above
+# df <- S2_MET_BLUEs_use %>%
+#   filter(trait == "AlphaAmylase")
+# 
+# fit <- lmer(value ~ (1|line_name) + (1|environment) + (1|line_name:environment), 
+#             data = df, weights = df$std.error, control = control)
+# 
+# blups <- ranef(fit, condVar = T)$line_name
+# vblup <- 2 * mean(attr(blups, "postVar"))
+# 
+# varG <- c(VarCorr(fit)[["line_name"]])
+# 
+# (h2_cullis <- 1 - vblup / (2 * varG))
+# 
+# # Determine the harmonic mean of the number of locations, years, and reps
+# plot_table <- xtabs(~ line_name + environment, df)
+# 
+# harm_env <- apply(X = plot_table, MARGIN = c(1,2), sum) %>% 
+#   ifelse(. > 1, 1, .) %>%
+#   rowSums() %>% 
+#   harm_mean()
+# 
+# # Reps
+# harm_rep <- apply(X = plot_table, MARGIN = c(1,2), sum) %>% 
+#   harm_mean()
+# 
+# h2 <- herit(object = fit, n_e = harm_env, n_r = harm_rep,
+#       exp = "line_name / (line_name + (line_name:environment / n_e) + (Residual / (n_e * n_r)))")
+# 
+# c(trad = h2$heritability, cullis = h2_cullis)
+
+
+
+
+
+
+
+
+
+# Control for lmer
+control <- lmerControl(check.nobs.vs.nlev = "ignore", check.nobs.vs.nRE = "ignore", 
+                       calc.derivs = FALSE, optimizer = "optimx",
+                       optCtrl = list(method = "nlminb", starttests = FALSE, kkt = FALSE))
+
+## Fit genotype and environment as fixed effects to measure the range in values
+trait_main_BLUEs <- S2_MET_BLUEs_use %>%
+  group_by(trait) %>%
+  do({
+    df <- .
+    
+    # Model formula
+    form <- value ~ line_name + environment + (1|line_name:environment)
+    
+    # Get the weights
+    wts <- df$std.error^2
+    
+    # Model fitting
+    fit <- lmer(formula = form, data = df, control = control, weights = wts)
+    
+    ## Get the fixed effects
+    blues <- fixef(fit) %>% 
+      data.frame(grp = names(.), value = ., row.names = NULL, stringsAsFactors = FALSE)
+    
+    # Scale to intercept and return
+    blues %>% 
+      mutate(grp = str_replace_all(grp, "line_name|environment", ""), 
+             value = ifelse(grp == "(Intercept)", value, value + value[1]), 
+             grp = ifelse(grp == "(Intercept)", levels(as.factor(df$line_name))[1], grp))
+    
+  })
+
+
+## Calculate the min and max values across environments, the whole S2MET,
+## and the two smaller populations
+trait_main_BLUEs_grp <- trait_main_BLUEs %>%
+  ungroup() %>%
+  mutate(type = ifelse(str_detect(string = grp, "^[0-9]"), "line_name", "environment"))
+
+# First environments
+(trait_main_BLUEs_env <- trait_main_BLUEs_grp %>% 
+    filter(type == "environment") %>% 
+    group_by(trait) %>% 
+    summarize_at(vars(value), funs(min, max, mean)))
+
+(trait_main_BLUEs_gen <- trait_main_BLUEs_grp %>%  
+    filter(type == "line_name") %>% 
+    mutate(population = ifelse(str_detect(grp, "^0"), "TP", "VP")) %>% 
+    group_by(trait, population) %>%  
+    summarize_at(vars(value), funs(min, max, mean)))
+
+
+## Read-in the trait observation info
+trait_info <- read_csv(file = file.path(fig_dir, "trait_information_table.csv"))
 
 
 
@@ -245,22 +397,29 @@ trait_varcomp_sig <- trait_varcomp %>%
       pvalue <= 0.01 ~ "**",
       pvalue <= 0.05 ~ "*",
       TRUE ~ ""),
-    variance = round(variance, 3),
+    variance = ifelse(variance < 1, signif(variance, 3), round(variance, 3)), # Choose rounding method based on size
     variance_notation = str_trim(str_c(variance, sig_notation, sep = " "))) %>%
-  left_join(., t3.traits, by = c("trait" = "Nickname")) 
+  left_join(., t3_traits, by = c("trait" = "Nickname")) 
 
-# Create the table
+# Create the table for printing
 trait_varcomp_sig_toprint <- trait_varcomp_sig %>% 
   select(term, Trait, variance_notation) %>% 
-  mutate(term = str_replace_all(string = term, pattern = ":", replacement = " %*% ") %>% str_to_title(),
+  mutate(term = str_to_title(str_replace_all(string = term, pattern = ":", replacement = " %*% ")),
          term = str_replace_all(string = term, "Line_name", "Genotype"),
-         Trait = str_to_title(Trait)) %>%
-  spread(Trait, variance_notation) %>%
-  rename(Term = term)
+         Trait = str_to_title(Trait),
+         Trait = factor(Trait, levels = trait_info$Trait)) %>%
+  spread(term, variance_notation) %>%
+  arrange(Trait)
 
 
 save_file <- file.path(fig_dir, "trait_variance_components.csv")
 write_csv(x = trait_varcomp_sig_toprint, path = save_file)
+
+
+
+
+
+
 
 
 ## Summarize the mean, min, max, sd, and heritability of each trait
@@ -271,37 +430,71 @@ trait_summary <- S2_MET_BLUEs_use %>%
 
 # Format to print
 trait_summary_toprint <- trait_summary %>% 
-  left_join(., select(t3.traits, Trait, Nickname), by = c("trait" = "Nickname")) %>% 
+  left_join(., select(t3_traits, Trait, Nickname), by = c("trait" = "Nickname")) %>% 
   mutate(Trait = str_to_title(Trait)) %>% 
   select(-trait) %>% 
   gather(parameter, value, -Trait) %>% 
-  mutate(value = round(value, 3)) %>% # Round the values
-  spread(Trait, value) %>% 
-  rename(Trait = parameter) %>%
-  mutate(Trait = factor(Trait, levels = names(trait_summary)[-1])) %>%
+  mutate(value = ifelse(value < 0, 0, value),
+         value = signif(value, 3)) %>% # Round the values
+  spread(parameter, value) %>% 
+  mutate(Trait = factor(Trait, levels = trait_info$Trait)) %>% 
+  select(Trait, Min = min, Max = max, Mean = mean, S.D. = sd, H = h2) %>%
   arrange(Trait)
 
 save_file <- file.path(fig_dir, "trait_value_summary.csv")
 write_csv(x = trait_summary_toprint, path = save_file)
 
-## Calculate genetic correlations among the genotype BLUPs
-trait_geno_BLUP <- trait_varcomp %>% 
-  do({.$full_fit[[1]] %>% ranef() %>% as.data.frame() %>% filter(grpvar == "line_name") %>% 
-      select(line_name = grp, value = condval) }) %>%
+
+
+
+
+
+
+
+## Calculate genetic correlations among the genotype BLUEs
+trait_geno_BLUE <- trait_main_BLUEs_grp %>%
+  filter(type == "line_name") %>% 
+  select(-type) %>%
+  spread(trait, value)
+
+
+
+
+# Create a data.frame for pairwise trait comparisons
+trait_phencor <- distinct(trait_main_BLUEs, trait) %>% 
+  ungroup() %>%
+  crossing(., .) %>%
+  mutate(data = pmap(list(trait, trait1), ~{trait_geno_BLUE[,c(.x, .y)]}),
+         cor = map(data, ~bootstrap(x = .[,1], y = .[,2], fun = "cor", boot.reps = 1000,
+                                    alpha = c(0.001, 0.01, 0.05))))
+
+
+## Unnest and annotate based on significance (using the confidence interval)
+trait_phencor_ann <- trait_phencor %>%
+  unnest(cor) %>%
+  mutate(significant = !(ci_lower <= 0 & 0 <= ci_upper),
+         alpha = rep(c(0.001, 0.01, 0.05), length.out = nrow(.)),
+         significant_ann = case_when(significant & alpha == 0.001 ~ "***",
+                                     significant & alpha == 0.01 ~ "**",
+                                     significant & alpha == 0.05 ~ "*",
+                                     TRUE ~ "")) %>%
+  group_by(trait, trait1) %>%
+  filter(nchar(significant_ann) == max(nchar(significant_ann))) %>%
+  # Take the first row of the combinations, if none are signficant
+  slice(1) %>%
   ungroup()
 
 
-## Calculate the genetic correlations
-trait_gencor <- trait_geno_BLUP %>% 
-  spread(trait, value) %>% 
-  select(-line_name) %>% 
-  cor()
 
-# Convert to df
-trait_gencor_df <- trait_gencor %>% 
-  as.data.frame() %>% 
-  rownames_to_column("trait1") %>% 
-  gather(trait2, correlation, -trait1)
+# Convert to matrix
+trait_phencor_mat <- trait_phencor_ann %>% 
+  select(trait, trait1, base) %>% 
+  spread(trait1, base) %>% 
+  remove_rownames() %>% 
+  as.data.frame() %>%
+  column_to_rownames("trait") %>% 
+  as.matrix()
+
 
 ## Plot the correlation
 # Color scheme
@@ -309,27 +502,88 @@ color <- umn_palette(2, 4)
 
 # Cluster the correlations using the heatmap function
 # Abbreviate the trait names
-trait_order <- row.names(trait_gencor)[heatmap(trait_gencor)$rowInd] %>%
+trait_order <- unique(trait_phencor_ann$trait)[heatmap(trait_phencor_mat)$rowInd] %>%
   abbreviate(minlength = 2)
 
-# Plot using ggplot
-g_trait_gencor <- trait_gencor_df %>%
+
+## Designate an observation as the upper triangle or the lower triangle
+trait_phencor_ann_toplot <- trait_phencor_ann %>%
   mutate_at(vars(contains("trait")), ~str_replace_all(., trait_order) %>% 
-              factor(., levels = trait_order)) %>% 
-  ggplot(aes(x = trait1, y = trait2, fill = correlation)) + 
-  geom_tile() + 
-  scale_fill_gradient2(low = color[3], mid = "white", high = color[1], name = "Genetic\nCorrelation") +
-  theme_bw() +
+              factor(., levels = trait_order)) %>%
+  arrange(trait, trait1) %>%
+  mutate(triangle = apply(X = select(., trait, trait1), MARGIN = 1, FUN = sort) %>% 
+           t() %>% duplicated(),
+         triangle = ifelse(triangle, "lower", "upper"),
+         text = ifelse(significant_ann == "", "", str_c(round(base, 2), significant_ann)),
+         text = ifelse(triangle == "lower", text, ""), # Set the lower-triangle text
+         base = ifelse(triangle == "lower", NA, base)) # Set the lower-triangle values to 0
+
+
+
+greys <- grey.colors(n = 3, start = 0.1, end = 0.9)
+
+# Plot using ggplot
+g_trait_phencor <- trait_phencor_ann_toplot %>%
+  ggplot(aes(x = trait, y = trait1, fill = base, label = text)) + 
+  geom_tile(color = "grey75") + 
+  geom_text(size = 3) +
+  # scale_fill_gradient2(low = color[3], mid = "white", high = color[1], 
+  #                      name = "Phenotypic\nCorrelation\n") +
+  scale_fill_gradient2(name = "Phenotypic\nCorrelation\n", low = greys[3], mid = greys[2], high = greys[1],
+                       midpoint = 0, na.value = "white") +
+  labs(caption = "*Significant at the 0.05 significance level
+**Significant at the 0.01 significance level
+***Significant at the 0.001 significance level
+") + 
+  theme_acs() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        axis.title = element_blank())
+        axis.title = element_blank(),
+        panel.border = element_blank(),
+        legend.position = "bottom")
+
+# Save the graph
+ggsave(filename = "trait_genetic_correlations.jpg", plot = g_trait_phencor, path = fig_dir,
+       width = 7, height = 7, dpi = 1000)
+
+
+
+
+
+
+
+
+## Convert the data.frame to a table to print
+# First determine the repetitive trait pairs
+# Abbreviate the trait names
+trait_pairs_remove <- select(trait_phencor_ann, trait, trait1) %>% 
+  apply(X = ., MARGIN = 1, FUN = sort) %>%
+  t() %>%
+  duplicated()
+
+# Create that data.frame
+trait_phencor_ann_toprint <- trait_phencor_ann %>% 
+  # Need to abbreviate the trait names so the duplicate removal works
+  arrange(desc(trait), desc(trait1)) %>%
+  mutate(cor_ann = paste(round(cor, 3), significant_ann),
+         cor_ann = str_trim(cor_ann)) %>% 
+  select(trait, trait1, cor_ann) %>%
+  filter(trait_pairs_remove) %>%
+  complete(trait, trait1, fill = list(cor_ann = "")) %>%
+  spread(trait1, cor_ann)
+
 
 # Save the correlation matrix
 save_file <- file.path(fig_dir, "trait_genetic_correlations.csv")
-write.csv(x = trait_gencor, file = save_file, quote = FALSE, row.names = TRUE)
+write.csv(x = trait_phencor_ann_toprint, file = save_file, quote = FALSE, row.names = FALSE)
 
-# Save the graph
-save_file <- file.path(fig_dir, "trait_genetic_correlations.jpg")
-ggsave(filename = save_file, plot = g_trait_gencor, width = 6, height = 5, dpi = 1000)
+
+## Save all analysis data
+save_file <- file.path(results_dir, "phenotype_analysis_data.RData")
+save("trait_varcomp", "S2_MET_BLUEs_use", "trait_phencor", "trait_main_BLUEs", file = save_file)
+
+
+
+
 
 
 
@@ -365,24 +619,52 @@ enviro_best_line_count <- enviro_best_line %>%
   group_by(trait, line_name) %>% 
   summarize(n_best = n())
 
-# Look at grain yiedl
-# Plot a histogram
-g_best_line_gy <- enviro_best_lines_count %>% 
+# # Look at grain yield
+# # Plot a histogram
+# g_best_line_gy <- enviro_best_lines_count %>% 
+#   filter(trait == "GrainYield") %>% 
+#   ggplot(aes(x = n_best)) +
+#   geom_histogram(binwidth = 1) + 
+#   xlab("Number of Environments in Which the Line Was Superior (Top 5)") +
+#   ylab("Number of Lines") +
+#   labs(title = "Grain Yield") +
+#   theme_bw() +
+#   theme(panel.grid = element_blank(),
+#         plot.title = element_text(hjust = 0.9, margin = margin(t = 10, b = -20)))
+# 
+# # Save the plot
+# save_file <- file.path(fig_dir, "enviro_best_line_grainyield.jpg")
+# ggsave(filename = save_file, plot = g_best_line_gy, height = 5, width = 5, dpi = 1000)
+# 
+
+
+## For grain, find the rank of the top 5 genotypes from one environment in all
+## other environments.
+# First assign rank to all genotypes in all environments
+grainyield_env_rank <- S2_MET_BLUEs_use %>%
   filter(trait == "GrainYield") %>% 
-  ggplot(aes(x = n_best)) +
-  geom_histogram(binwidth = 1) + 
-  xlab("Number of Environments in Which the Line Was Superior (Top 5)") +
-  ylab("Number of Lines") +
-  labs(title = "Grain Yield") +
-  theme_bw() +
-  theme(panel.grid = element_blank(),
-        plot.title = element_text(hjust = 0.9, margin = margin(t = 10, b = -20)))
+  group_by(environment) %>% 
+  mutate(rank = rank(-value), n = n(), percentile = rank / n) %>%
+  ungroup()
 
-# Save the plot
-save_file <- file.path(fig_dir, "enviro_best_line_grainyield.jpg")
-ggsave(filename = save_file, plot = g_best_line_gy, height = 5, width = 5, dpi = 1000)
+enviro_best_lines_allrank <- enviro_best_lines %>% 
+  ungroup() %>%
+  filter(trait == "GrainYield") %>%
+  left_join(., select(grainyield_env_rank, environment, line_name, value, rank, percentile), by = "line_name")
 
 
+## Look at some of the lines that were best in many environments
+lines_of_interest <- enviro_best_lines_count %>% 
+  filter(trait == "GrainYield")  %>% 
+  arrange(desc(n_best)) %>% 
+  head(3) %>%
+  pull(line_name)
+
+## Print the ordered rank of these lines in all environments
+enviro_best_lines_allrank %>% 
+  filter(line_name %in% lines_of_interest) %>% 
+  distinct(line_name, environment.y, value.y, rank, percentile) %>% 
+  arrange(line_name, rank) %>% View
 
 
 

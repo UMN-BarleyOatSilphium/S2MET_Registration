@@ -12,17 +12,19 @@ library(cowplot)
 library(lme4)
 library(modelr)
 library(broom)
+library(boot)
 
 # Personal libraries
 library(neyhart)
 library(pbr)
-library(fbutils)
+library(barleypheno)
 
 
 # Directories
 proj_dir <- repo_dir
 fig_dir <- file.path(proj_dir, "Figures")
 data_dir <- file.path(proj_dir, "Data")
+results_dir <- file.path(proj_dir, "Results")
 
 ## Read in data relevant to the project
 # Read in trial information
@@ -32,9 +34,10 @@ trial_info <- read_csv(file = file.path(proj_dir, "Data/trial_metadata.csv"))
 entry_list <- read_excel(path = file.path(proj_dir, "Data/project_entries.xlsx"))
 
 
-# Read in the S2MET tidy information
-load("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Genomic Selection/Phenotypic Data/Final/Master Phenotypes/S2_MET_tidy.RData")
-
+# Read in the S2MET tidy phenotypic data
+load("C:/Users/Jeff/GoogleDrive/BarleyLab/Breeding//PhenotypicData/Final/MasterPhenotypes/S2_MET_tidy.RData")
+# Read in the marker data
+load("C:/Users/Jeff/GoogleDrive/BarleyLab/Projects/Genomics/Genotypic_Data/GBS_Genotype_Data/S2_genos_mat.RData")
 
 # Remove some traits
 traits_remove <- c("BacterialLeafSteakSeverity", "BarleyColor", "FHBIncidence", 
@@ -48,4 +51,72 @@ S2_MET_tidy_use <- S2_MET_tidy %>%
 
 # Assign the checks
 checks <- subset(entry_list, class == "Check", line_name, drop = T)
+
+
+# Grab the entry names that are not checks
+tp <- entry_list %>% 
+  filter(class == "S2TP") %>% 
+  pull(line_name )
+
+vp <- entry_list %>% 
+  filter(class == "S2C1R") %>% 
+  pull(line_name )
+
+# Find the tp and vp that are genotypes
+tp_geno <- intersect(tp, row.names(s2_imputed_mat))
+vp_geno <- intersect(vp, row.names(s2_imputed_mat))
+
+
+## Functions
+## Bootstrap a correlation coefficient
+## alpha can be a vector
+boot_cor <- function(x, y, boot.reps = 1000, alpha = 0.05) {
+  
+  # Error
+  boot.reps <- as.integer(boot.reps)
+  
+  # Prob must be between 0 and 1
+  alpha_check <- alpha > 0 | alpha < 1
+  
+  if (!all(alpha_check))
+    stop("'alpha' must be between 0 and 1.")
+  
+  # Define a function for the correlation
+  boot.cor <- function(input.data, i) {
+    rep_data <- input.data[i,]
+    return(cor(rep_data[,1], rep_data[,2]))
+  }
+  
+  
+  # First calculate the base statistic
+  base_cor <- suppressWarnings(cor(x, y))
+  
+  # If the correlation is not NA, proceed
+  if (!is.na(base_cor)) {
+    
+    # Perform the bootstrapping
+    boot_results <- boot(data = cbind(x, y), statistic = boot.cor, R = boot.reps)
+    
+    # Standard error
+    se <- sd(boot_results$t)
+    # Bias
+    bias <- mean(boot_results$t) - base_cor
+    
+    
+    # Confidence interval
+    ci_upper <- quantile(boot_results$t, 1 - (alpha / 2))
+    ci_lower <- quantile(boot_results$t, (alpha / 2))
+    
+  } else {
+    
+    se <- bias <- ci_lower <- ci_upper <- NA
+    
+  }
+  
+  # Assemble list and return
+  data.frame(cor = base_cor, se = se, bias = bias, alpha = alpha,
+             ci_lower = ci_lower, ci_upper = ci_upper, row.names = NULL)
+}
+
+
 
