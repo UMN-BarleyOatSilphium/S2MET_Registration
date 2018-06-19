@@ -7,26 +7,10 @@
 
 # Run the source script
 repo_dir <- getwd()
-source(file.path(repo_dir, "source.R"))
+source(file.path(repo_dir, "source_use.R"))
 
 ## Load the optimx package
 library(optimx)
-
-
-## Concatenate the pedigree information
-# Load the pedigree data
-ped_file <- "C:/Users/Jeff/GoogleDrive/BarleyLab/Breeding/PopulationInformation/Pedigree/UMN_S2_Pedigrees.xlsx"
-tp_ped <- read_excel(path = ped_file, sheet = "TP")
-vp_ped <- read_excel(path = ped_file, sheet = "S2C1R")
-
-# Combine
-s2met_pedigree <- bind_rows(
-  select(tp_ped, Line, Pedigree),
-  select(vp_ped, Line, Pedigree)
-)
-
-# Print to csv
-write_csv(x = s2met_pedigree, path = "S2MET_pedigree.csv")
 
 
 
@@ -283,47 +267,6 @@ trait_varcomp <- S2_MET_BLUEs_use %>%
     data_frame(var_comp = list(var_comp2), full_fit = fits[1])
     
   })
-
-
-
-
-
-# ## Try the mohring and piepho 2009 method of heritability
-# ## The estimates using this approach are not very different from the ad hoc heritability
-# ## method outlined above
-# df <- S2_MET_BLUEs_use %>%
-#   filter(trait == "AlphaAmylase")
-# 
-# fit <- lmer(value ~ (1|line_name) + (1|environment) + (1|line_name:environment), 
-#             data = df, weights = df$std.error, control = control)
-# 
-# blups <- ranef(fit, condVar = T)$line_name
-# vblup <- 2 * mean(attr(blups, "postVar"))
-# 
-# varG <- c(VarCorr(fit)[["line_name"]])
-# 
-# (h2_cullis <- 1 - vblup / (2 * varG))
-# 
-# # Determine the harmonic mean of the number of locations, years, and reps
-# plot_table <- xtabs(~ line_name + environment, df)
-# 
-# harm_env <- apply(X = plot_table, MARGIN = c(1,2), sum) %>% 
-#   ifelse(. > 1, 1, .) %>%
-#   rowSums() %>% 
-#   harm_mean()
-# 
-# # Reps
-# harm_rep <- apply(X = plot_table, MARGIN = c(1,2), sum) %>% 
-#   harm_mean()
-# 
-# h2 <- herit(object = fit, n_e = harm_env, n_r = harm_rep,
-#       exp = "line_name / (line_name + (line_name:environment / n_e) + (Residual / (n_e * n_r)))")
-# 
-# c(trad = h2$heritability, cullis = h2_cullis)
-
-
-
-
 
 
 

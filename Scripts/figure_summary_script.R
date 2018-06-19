@@ -2,12 +2,13 @@
 ## Figure and Table Scripts
 ## 
 ## Author: Jeff Neyhart
-## Last updated: March 21, 2018
+## Last updated: June 19, 2018
 ## 
 
 # Run the source script
 repo_dir <- getwd()
 source(file.path(repo_dir, "source.R"))
+# source(file.path(repo_dir, "source_use.R")) # Run this if you are not Jeff
 
 
 ### Tables ###

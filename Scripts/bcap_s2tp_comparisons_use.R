@@ -13,11 +13,11 @@
 library(rrBLUP)
 
 repo_dir <- getwd()
-source(file.path(repo_dir, "source.R"))
+source(file.path(repo_dir, "source_use.R"))
 
 ## Load the Two-row CAP data
 ## The file path of this data should be changed for publication
-load("C:/Users/Jeff/GoogleDrive/BarleyLab/Breeding/PhenotypicData/2R_CAP/Base_Example_Phenos/2R_CAP_pheno_geno.RData")
+load("path/to/data/2R_CAP_pheno_geno.RData")
 
 ## Merge entry lists
 entry_list_bcap <- entry_list %>%

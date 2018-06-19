@@ -6,4 +6,8 @@ Figures/*
 Results/*
 TODO.md
 Scripts/pred_acc_tp_size.R
+source.R
+Scripts/bcap_s2tp_comparisons.R
+Scripts/gbs_marker_description.R
+Scripts/phenotype_data_adjustment_summary.R
 README.Rmd

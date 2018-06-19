@@ -15,9 +15,9 @@ library(broom)
 library(boot)
 
 # Personal libraries
-library(neyhart)
-library(pbr)
-library(barleypheno)
+library(neyhart) # https://github.com/neyhartj/neyhart
+library(pbr) # https://github.com/neyhartj/pbr
+library(barleypheno) # https://github.com/neyhartj/barleypheno
 
 
 # Directories
@@ -35,9 +35,9 @@ entry_list <- read_excel(path = file.path(proj_dir, "Data/project_entries.xlsx")
 
 
 # Read in the S2MET tidy phenotypic data
-load("C:/Users/Jeff/GoogleDrive/BarleyLab/Breeding//PhenotypicData/Final/MasterPhenotypes/S2_MET_tidy.RData")
+load("path/to/phenotypic/data/S2_MET_tidy.RData")
 # Read in the marker data
-load("C:/Users/Jeff/GoogleDrive/BarleyLab/Projects/Genomics/Genotypic_Data/GBS_Genotype_Data/S2_genos_mat.RData")
+load("path/to/genotype/data/S2_genos_mat.RData")
 
 # Remove some traits
 traits_remove <- c("BacterialLeafSteakSeverity", "BarleyColor", "FHBIncidence", 
