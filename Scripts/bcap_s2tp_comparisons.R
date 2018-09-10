@@ -17,7 +17,7 @@ source(file.path(repo_dir, "source.R"))
 
 ## Load the Two-row CAP data
 ## The file path of this data should be changed for publication
-load("C:/Users/Jeff/GoogleDrive/BarleyLab/Breeding/PhenotypicData/2R_CAP/Base_Example_Phenos/2R_CAP_pheno_geno.RData")
+load("C:/Users/jln54/GoogleDrive/BarleyLab/Breeding/PhenotypicData/2R_CAP/Base_Example_Phenos/2R_CAP_pheno_geno.RData")
 
 ## Merge entry lists
 entry_list_bcap <- entry_list %>%
@@ -42,7 +42,7 @@ colors <- umn_palette(2, 4)[2:3]
 # Vector to replace trait names
 # Use multiple quotes to work with label_parsed
 trait_replace <- c(GrainYield = "'Grain Yield '(kg~ha^-1)", GrainProtein = "'Grain Protein (%)'",
-                   MaltBetaGlucan = "'MaltBetaGlucan (ppm)'", SpotBlotchSeverity = "'Spot Blotch Severity (%)'")
+                   MaltBetaGlucan = "'Malt Beta Glucan (ppm)'", SpotBlotchSeverity = "'Spot Blotch Severity (%)'")
 
 # Show the BCAP data versus the S2TP data
 g_pheno_density <- bcap_pheno_ann_toplot %>% 

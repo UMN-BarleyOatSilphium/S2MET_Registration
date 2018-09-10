@@ -25,6 +25,7 @@ proj_dir <- repo_dir
 fig_dir <- file.path(proj_dir, "Figures")
 data_dir <- file.path(proj_dir, "Data")
 results_dir <- file.path(proj_dir, "Results")
+gdrive_dir <- "C:/Users/jln54/GoogleDrive"
 
 ## Read in data relevant to the project
 # Read in trial information
@@ -35,15 +36,16 @@ entry_list <- read_excel(path = file.path(proj_dir, "Data/project_entries.xlsx")
 
 
 # Read in the S2MET tidy phenotypic data
-load("C:/Users/Jeff/GoogleDrive/BarleyLab/Breeding//PhenotypicData/Final/MasterPhenotypes/S2_MET_tidy.RData")
+load(file.path(gdrive_dir, "/BarleyLab/Breeding//PhenotypicData/Final/MasterPhenotypes/S2_MET_tidy.RData"))
 # Read in the marker data
-load("C:/Users/Jeff/GoogleDrive/BarleyLab/Projects/Genomics/Genotypic_Data/GBS_Genotype_Data/S2_genos_mat.RData")
+load(file.path(gdrive_dir, "/BarleyLab/Projects/Genomics/Genotypic_Data/GBS_Genotype_Data/S2_genos_mat.RData"))
 
 # Remove some traits
 traits_remove <- c("BacterialLeafSteakSeverity", "BarleyColor", "FHBIncidence", 
                    "Lodging", "LodgingDegree", "Nodding", "PowderyMildew", "StrawBreakage",
                    "WortViscosity", "WortClarity", "WortColor", "KernelWeight", "MaturityDate",
                    "ThinGrains")
+
 
 # Remove the traits from the tidy dataset
 S2_MET_tidy_use <- S2_MET_tidy %>%
